@@ -112,7 +112,7 @@ func main() {
         flag.StringVar(&dir, "d", ".", "Watch directory")
         flag.Float64Var(&n, "n", 1.0, "Interval seconds")
         flag.BoolVar(&hidden, "hidden", false, "Watch hidden file")
-        flag.StringVar(&p, "p", "**/*", "Specify file name patterns to watch. "+
+        flag.StringVar(&p, "p", "", "Specify file name patterns to watch. "+
                 "Multiple patterns should be seperated by comma. "+
                 "If pattern is not specified all files in the dir will be watched")
         flag.Parse()
