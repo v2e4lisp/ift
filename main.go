@@ -23,7 +23,7 @@ var (
         dir       string
         interval  time.Duration
         watchfile string
-        waiting   bool
+        wait      bool
         hidden    bool
         p         string
 )
@@ -39,32 +39,9 @@ func loop() {
         }
         ready := make(chan bool, 1)
         if interval != 0 {
-                // run commands at interval
-                go func() {
-                        wait := time.Tick(interval)
-                        for _ = range wait {
-                                select {
-                                case <-ready:
-                                        if waiting {
-                                                run()
-                                        } else {
-                                                go run()
-                                        }
-                                default:
-                                }
-                        }
-                }()
+                go intervalRun(ready)
         } else {
-                go func() {
-                        for {
-                                <-ready
-                                if waiting {
-                                        run()
-                                } else {
-                                        go run()
-                                }
-                        }
-                }()
+                go alwaysRun(ready)
         }
 
         // filter events
@@ -83,6 +60,32 @@ func loop() {
                         }
                 case err := <-watcher.Errors:
                         log.Println("ift error:", err)
+                }
+        }
+}
+
+func intervalRun(ready <-chan bool) {
+        tick := time.Tick(interval)
+        for _ = range tick {
+                select {
+                case <-ready:
+                        if wait {
+                                run()
+                        } else {
+                                go run()
+                        }
+                default:
+                }
+        }
+}
+
+func alwaysRun(ready <-chan bool) {
+        for {
+                <-ready
+                if wait {
+                        run()
+                } else {
+                        go run()
                 }
         }
 }
@@ -150,7 +153,7 @@ func main() {
         flag.StringVar(&dir, "d", ".", "Watch directory")
         flag.DurationVar(&interval, "n", 2*time.Second, "Interval between command execution")
         flag.BoolVar(&hidden, "hidden", false, "Watch hidden file")
-        flag.BoolVar(&waiting, "wait", false, "Wait for last command to finish.")
+        flag.BoolVar(&wait, "wait", false, "Wait for last command to finish.")
 
         flag.StringVar(&watchfile, "watchfile", ".watch", "Watch file contains file name patterns. "+
                 "ift use these patterns to determine which files to watch. "+
