@@ -17,7 +17,7 @@ import (
 
 var (
         patterns = []string(nil)
-        cmd      string
+        cmd      []string
 
         // cli options
         dir       string
@@ -77,7 +77,7 @@ func loop() {
 }
 
 func run() {
-        c := exec.Command("sh", "-c", cmd)
+        c := exec.Command("sh", append([]string{"-c"}, cmd...)...)
         c.Dir = dir
         c.Stdout = os.Stdout
         c.Stderr = os.Stderr
@@ -153,7 +153,7 @@ func main() {
                 "all files in the dir will be watched(except hidden files). "+
                 "You can also use watch file to specify patterns.")
         flag.Parse()
-        if flag.NArg() != 1 {
+        if flag.NArg() < 1 {
                 flag.Usage()
                 os.Exit(1)
         }
@@ -170,6 +170,6 @@ func main() {
                 }
         }
 
-        cmd = flag.Arg(0)
+        cmd = flag.Args()
         loop()
 }
