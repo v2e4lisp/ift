@@ -23,6 +23,7 @@ var (
         dir       string
         interval  time.Duration
         watchfile string
+        waiting   bool
         hidden    bool
         p         string
 )
@@ -44,7 +45,11 @@ func loop() {
                 for _ = range wait {
                         select {
                         case <-ready:
-                                go run()
+                                if waiting {
+                                        run()
+                                } else {
+                                        go run()
+                                }
                         default:
                         }
                 }
@@ -127,18 +132,21 @@ func loadWatchFile() error {
 
 func main() {
         flag.Usage = func() {
-                fmt.Println("ift [-d dir] [-n secs] [-p patterns] [-hidden] command")
+                fmt.Println("ift [-d dir] [-wait] [-watchfile path] [-n interval] [-p patterns] [-hidden] command")
                 fmt.Println("\nOPTIONS:")
                 flag.PrintDefaults()
         }
         flag.StringVar(&dir, "d", ".", "Watch directory")
+        flag.DurationVar(&interval, "n", 2*time.Second, "Interval between command execution")
+        flag.BoolVar(&hidden, "hidden", false, "Watch hidden file")
+        flag.BoolVar(&waiting, "wait", false, "Wait for last command to finish.")
+
         flag.StringVar(&watchfile, "watchfile", ".watch", "Watch file contains file name patterns. "+
                 "ift use these patterns to determins which files to watch. "+
                 "If watchfile is not specified, ift will try to load "+
                 ".watch file under the watch directory. "+
                 "You can also specify patterns using -p option. ")
-        flag.DurationVar(&interval, "interval", 2*time.Second, "Interval seconds")
-        flag.BoolVar(&hidden, "hidden", false, "Watch hidden file")
+
         flag.StringVar(&p, "p", "", "Specify file name patterns to watch. "+
                 "Multiple patterns should be seperated by comma. "+
                 "If pattern is not specified, "+
