@@ -142,7 +142,7 @@ func main() {
         flag.BoolVar(&waiting, "wait", false, "Wait for last command to finish.")
 
         flag.StringVar(&watchfile, "watchfile", ".watch", "Watch file contains file name patterns. "+
-                "ift use these patterns to determins which files to watch. "+
+                "ift use these patterns to determine which files to watch. "+
                 "If watchfile is not specified, ift will try to load "+
                 ".watch file under the watch directory. "+
                 "You can also specify patterns using -p option. ")
