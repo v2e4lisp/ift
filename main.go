@@ -4,6 +4,7 @@ import (
         "errors"
         "flag"
         "fmt"
+        "io/ioutil"
         "log"
         "os"
         "os/exec"
@@ -19,10 +20,11 @@ var (
         cmd      string
 
         // cli options
-        dir      string
-        interval time.Duration
-        hidden   bool
-        p        string
+        dir       string
+        interval  time.Duration
+        watchfile string
+        hidden    bool
+        p         string
 )
 
 func loop() {
@@ -87,7 +89,7 @@ func watched(path string) error {
                 return errors.New("hidden file")
         }
         // watch all
-        if len(patterns) == 1 && patterns[0] == "" {
+        if len(patterns) == 0 {
                 return nil
         }
         var err error
@@ -107,8 +109,20 @@ func watched(path string) error {
 
 }
 
-func loadWatchFile() {
-        // pass
+func loadWatchFile() error {
+        text, err := ioutil.ReadFile(watchfile)
+        if err != nil {
+                return err
+        }
+        lines := strings.Split(string(text), "\n")
+        for _, l := range lines {
+                l = strings.TrimSpace(l)
+                if l == "" || l[0] == '#' {
+                        continue
+                }
+                patterns = append(patterns, l)
+        }
+        return nil
 }
 
 func main() {
@@ -118,22 +132,34 @@ func main() {
                 flag.PrintDefaults()
         }
         flag.StringVar(&dir, "d", ".", "Watch directory")
+        flag.StringVar(&watchfile, "watchfile", ".watch", "Watch file contains file name patterns. "+
+                "ift use these patterns to determins which files to watch. "+
+                "If watchfile is not specified, ift will try to load "+
+                ".watch file under the watch directory. "+
+                "You can also specify patterns using -p option. ")
         flag.DurationVar(&interval, "interval", 2*time.Second, "Interval seconds")
         flag.BoolVar(&hidden, "hidden", false, "Watch hidden file")
         flag.StringVar(&p, "p", "", "Specify file name patterns to watch. "+
                 "Multiple patterns should be seperated by comma. "+
-                "If pattern is not specified all files in the dir will be watched(except hidden files)")
+                "If pattern is not specified, "+
+                "all files in the dir will be watched(except hidden files). "+
+                "You can also use watch file to specify patterns.")
         flag.Parse()
-
-        dir, _ = filepath.Abs(dir)
-        pats := strings.Split(p, ",")
-        for _, pat := range pats {
-                patterns = append(patterns, strings.TrimSpace(pat))
+        if flag.NArg() != 1 {
+                flag.Usage()
+                os.Exit(1)
         }
 
-        if flag.NArg() != 1 {
-                fmt.Println("Command not found")
-                os.Exit(1)
+        dir, _ = filepath.Abs(dir)
+        if !filepath.IsAbs(watchfile) {
+                watchfile = filepath.Join(dir, watchfile)
+        }
+        loadWatchFile()
+        if p != "" {
+                pats := strings.Split(p, ",")
+                for _, pat := range pats {
+                        patterns = append(patterns, strings.TrimSpace(pat))
+                }
         }
 
         cmd = flag.Arg(0)
