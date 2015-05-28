@@ -17,7 +17,7 @@ import (
 
 var (
         patterns = []string(nil)
-        cmd      []string
+        cmd      string
 
         // cli options
         dir       string
@@ -38,22 +38,34 @@ func loop() {
                 log.Fatal(err)
         }
         ready := make(chan bool, 1)
-
-        // run commands at interval
-        go func() {
-                wait := time.Tick(interval)
-                for _ = range wait {
-                        select {
-                        case <-ready:
+        if interval != 0 {
+                // run commands at interval
+                go func() {
+                        wait := time.Tick(interval)
+                        for _ = range wait {
+                                select {
+                                case <-ready:
+                                        if waiting {
+                                                run()
+                                        } else {
+                                                go run()
+                                        }
+                                default:
+                                }
+                        }
+                }()
+        } else {
+                go func() {
+                        for {
+                                <-ready
                                 if waiting {
                                         run()
                                 } else {
                                         go run()
                                 }
-                        default:
                         }
-                }
-        }()
+                }()
+        }
 
         // filter events
         for {
@@ -65,7 +77,6 @@ func loop() {
                         if err := watched(ev.Name); err != nil {
                                 break
                         }
-                        // name, _ := filepath.Rel(dir, ev.Name)
                         select {
                         case ready <- true:
                         default:
@@ -77,7 +88,7 @@ func loop() {
 }
 
 func run() {
-        c := exec.Command("sh", append([]string{"-c"}, cmd...)...)
+        c := exec.Command("sh", "-c", cmd)
         c.Dir = dir
         c.Stdout = os.Stdout
         c.Stderr = os.Stderr
@@ -170,6 +181,6 @@ func main() {
                 }
         }
 
-        cmd = flag.Args()
+        cmd = strings.Join(flag.Args(), " ")
         loop()
 }
