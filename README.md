@@ -1,9 +1,10 @@
 ## Usage
 
 ```
-ift [-d dir] [-wait] [-watchfile path] [-n interval] [-p patterns] [-hidden] command
+Usage:
+  ift [-d dir] [-watchfile path] [-n interval] [-p patterns] [-wait] [-hidden] command
 
-OPTIONS:
+Options:
   -d=".": Watch directory
   -hidden=false: Watch hidden file
   -n=2s: Interval between command execution
