@@ -37,7 +37,7 @@ func loop() {
         if err != nil {
                 log.Fatal(err)
         }
-        ready := make(chan bool, 1)
+        ready := make(chan *fsnotify.Event, 1)
         if interval != 0 {
                 go intervalRun(ready)
         } else {
@@ -48,14 +48,16 @@ func loop() {
         for {
                 select {
                 case ev := <-watcher.Events:
-                        if ev.Op&fsnotify.Write != fsnotify.Write {
+                        // ignore chmod
+                        if ev.Op&fsnotify.Chmod != fsnotify.Chmod {
                                 break
                         }
                         if err := watched(ev.Name); err != nil {
                                 break
                         }
+
                         select {
-                        case ready <- true:
+                        case ready <- &ev:
                         default:
                         }
                 case err := <-watcher.Errors:
@@ -64,34 +66,36 @@ func loop() {
         }
 }
 
-func intervalRun(ready <-chan bool) {
+func intervalRun(ready <-chan *fsnotify.Event) {
         tick := time.Tick(interval)
         for _ = range tick {
                 select {
-                case <-ready:
+                case ev := <-ready:
                         if wait {
-                                run()
+                                run(ev)
                         } else {
-                                go run()
+                                go run(ev)
                         }
                 default:
                 }
         }
 }
 
-func alwaysRun(ready <-chan bool) {
+func alwaysRun(ready <-chan *fsnotify.Event) {
         for {
-                <-ready
+                ev := <-ready
                 if wait {
-                        run()
+                        run(ev)
                 } else {
-                        go run()
+                        go run(ev)
                 }
         }
 }
 
-func run() {
+func run(ev *fsnotify.Event) {
+        env := append(os.Environ(), fmt.Sprintf("FS_EVENT=%s", ev))
         c := exec.Command("sh", "-c", cmd)
+        c.Env = env
         c.Dir = dir
         c.Stdout = os.Stdout
         c.Stderr = os.Stderr
@@ -104,7 +108,7 @@ func watched(path string) error {
         if path == "" {
                 return errors.New("file name not found")
         }
-        if hidden && filepath.Base(path)[0] == '.' {
+        if !hidden && filepath.Base(path)[0] == '.' {
                 return errors.New("hidden file")
         }
         // watch all
