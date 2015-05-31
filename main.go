@@ -150,8 +150,9 @@ func loadWatchFile() error {
 
 func main() {
         flag.Usage = func() {
-                fmt.Println("ift [-d dir] [-wait] [-watchfile path] [-n interval] [-p patterns] [-hidden] command")
-                fmt.Println("\nOPTIONS:")
+                fmt.Println("Usage:")
+                fmt.Println("  ift [-d dir] [-watchfile path] [-n interval] [-p patterns] [-wait] [-hidden] command")
+                fmt.Println("\nOptions:")
                 flag.PrintDefaults()
         }
         flag.StringVar(&dir, "d", ".", "Watch directory")
