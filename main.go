@@ -38,24 +38,31 @@ func loop() {
                 log.Fatal(err)
         }
         ready := make(chan *fsnotify.Event, 1)
-        if interval != 0 {
-                go intervalRun(ready)
-        } else {
-                go alwaysRun(ready)
-        }
+        go func() {
+                t := make(chan interface{})
+                for {
+                        ev := <-ready
+                        go func() { time.Sleep(interval); t <- true }()
+                        if wait {
+                                run(ev)
+                        } else {
+                                go run(ev)
+                        }
+                        <-t
+                }
+        }()
 
         // filter events
         for {
                 select {
                 case ev := <-watcher.Events:
                         // ignore chmod
-                        if ev.Op&fsnotify.Chmod != fsnotify.Chmod {
+                        if ev.Op&fsnotify.Chmod == fsnotify.Chmod {
                                 break
                         }
                         if err := watched(ev.Name); err != nil {
                                 break
                         }
-
                         select {
                         case ready <- &ev:
                         default:
@@ -66,33 +73,8 @@ func loop() {
         }
 }
 
-func intervalRun(ready <-chan *fsnotify.Event) {
-        tick := time.Tick(interval)
-        for _ = range tick {
-                select {
-                case ev := <-ready:
-                        if wait {
-                                run(ev)
-                        } else {
-                                go run(ev)
-                        }
-                default:
-                }
-        }
-}
-
-func alwaysRun(ready <-chan *fsnotify.Event) {
-        for {
-                ev := <-ready
-                if wait {
-                        run(ev)
-                } else {
-                        go run(ev)
-                }
-        }
-}
-
 func run(ev *fsnotify.Event) {
+        log.Println("sh -c", cmd)
         env := append(os.Environ(), fmt.Sprintf("FS_EVENT=%s", ev))
         c := exec.Command("sh", "-c", cmd)
         c.Env = env
@@ -129,7 +111,6 @@ func watched(path string) error {
                 return nil
         }
         return errors.New("file is not being watched")
-
 }
 
 func loadWatchFile() error {
