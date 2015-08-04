@@ -172,7 +172,7 @@ func main() {
                 "Multiple patterns should be seperated by comma. "+
                 "If pattern is not specified, "+
                 "all files in the dir will be watched(except hidden files). "+
-                "You can also use watch file to specify patterns.")
+                "You can also use ignore file to specify patterns.")
         flag.Parse()
         if flag.NArg() < 1 {
                 flag.Usage()
