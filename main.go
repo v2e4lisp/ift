@@ -57,22 +57,7 @@ func loop() {
                 return nil
         });
 
-        ready := make(chan *fsnotify.Event, 1)
-        go func() {
-                t := make(chan interface{})
-                for {
-                        ev := <-ready
-                        go func() { time.Sleep(interval); t <- true }()
-                        if wait {
-                                run(ev)
-                        } else {
-                                go run(ev)
-                        }
-                        <-t
-                }
-        }()
-
-        // filter events
+        nextRound := time.Now()
         for {
                 select {
                 case ev := <-watcher.Events:
@@ -83,10 +68,16 @@ func loop() {
                         if err := watched(ev.Name); err != nil {
                                 break
                         }
+                        now := time.Now()
+                        if !now.After(nextRound) {
+                                break
+                        }
+                        nextRound = now.Add(interval)
 
-                        select {
-                        case ready <- &ev:
-                        default:
+                        if wait {
+                                run(&ev)
+                        } else {
+                                go run(&ev)
                         }
                 case err := <-watcher.Errors:
                         log.Println("ift error:", err)
